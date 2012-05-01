@@ -1,4 +1,4 @@
-package funnel
+package funnelsort
 
 import (
 	"encoding/binary"
@@ -12,7 +12,7 @@ import (
 type Buffer interface {
 	Reader
 	Writer
-	peek() uint64
+	peek() Item
 	empty() bool
 	full() bool
 	reset()
@@ -83,7 +83,7 @@ func (b *MMBuffer) SubBuffer(offset, max uint64) Buffer {
 	return &MMBuffer{offset: offset, max: max, map_file: b.map_file}
 }
 
-const SIZE = int(unsafe.Sizeof(uint64(0)))
+const SIZE = int(unsafe.Sizeof(Item(0)))
 const BLOCK_SIZE = 4096 * SIZE
 
 func fromIndex(n uint64) (int, int) {
@@ -103,15 +103,15 @@ func (b *MMBuffer) full() bool {
 	return b.tail == b.max
 }
 
-func (b *MMBuffer) peek() uint64 {
+func (b *MMBuffer) peek() Item {
 	block_number, i := fromIndex(b.offset + b.head)
-	return binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE])
+	return Item(binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE]))
 }
 
-func (b *MMBuffer) read() uint64 {
+func (b *MMBuffer) Read() Item {
 	block_number, i := fromIndex(b.offset + b.head)
 	b.head += 1
-	return binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE])
+	return Item(binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE]))
 }
 
 func (b *MMBuffer) reset() {
@@ -119,24 +119,24 @@ func (b *MMBuffer) reset() {
 	b.tail = 0
 }
 
-func (b *MMBuffer) write(a uint64) {
+func (b *MMBuffer) Write(a Item) {
 	block_number, i := fromIndex(b.offset + b.tail)
-	binary.LittleEndian.PutUint64(b.data(block_number)[i:i+SIZE], a)
+	binary.LittleEndian.PutUint64(b.data(block_number)[i:i+SIZE], uint64(a))
 	b.tail += 1
 }
 
 type ChBuffer struct {
-	ch        chan uint64
+	ch        chan Item
 	unread    uint64
 	hasPeek   bool
-	peekValue uint64
+	peekValue Item
 }
 
 func NewChBuffer(n uint64) Buffer {
-	return &ChBuffer{ch: make(chan uint64, n)}
+	return &ChBuffer{ch: make(chan Item, n)}
 }
 
-func (b *ChBuffer) write(item uint64) {
+func (b *ChBuffer) Write(item Item) {
 	b.hasPeek = false
 	b.unread += 1
 	b.ch <- item
@@ -162,15 +162,15 @@ func (b *ChBuffer) full() bool {
 	return b.unread == uint64(cap(b.ch))
 }
 
-func (b *ChBuffer) peek() uint64 {
+func (b *ChBuffer) peek() Item {
 	if b.hasPeek == false {
-		b.peekValue = b.read()
+		b.peekValue = b.Read()
 		b.hasPeek = true
 	}
 	return b.peekValue
 }
 
-func (b *ChBuffer) read() uint64 {
+func (b *ChBuffer) Read() Item {
 	if b.hasPeek {
 		b.hasPeek = false
 		return b.peekValue

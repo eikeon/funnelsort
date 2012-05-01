@@ -1,4 +1,4 @@
-package funnel
+package funnelsort
 
 import (
 	"math/rand"
@@ -7,10 +7,10 @@ import (
 
 type Increasing struct {
 	outOfOrder bool
-	last       uint64
+	last       Item
 }
 
-func (w *Increasing) write(item uint64) {
+func (w *Increasing) Write(item Item) {
 	if w.last > item {
 		w.outOfOrder = true
 	}
@@ -25,10 +25,10 @@ func (r *Random) Unread() uint64 {
 	return r.unread
 }
 
-func (r *Random) read() uint64 {
+func (r *Random) Read() Item {
 	if r.unread > 0 {
 		r.unread -= 1
-		return uint64(rand.Int63())
+		return Item(rand.Int63())
 	}
 	panic("")
 }

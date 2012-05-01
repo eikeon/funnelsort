@@ -1,4 +1,4 @@
-package funnel
+package funnelsort
 
 import (
 	"math"
@@ -6,12 +6,12 @@ import (
 )
 
 type Reader interface {
-	read() uint64
+	Read() Item
 	Unread() uint64 // TODO: big.Int ?
 }
 
 type Writer interface {
-	write(i uint64)
+	Write(i Item)
 	// Written() uint64
 }
 
@@ -24,29 +24,28 @@ func (r *limitReader) Unread() uint64 {
 	return r.unread
 }
 
-func (r *limitReader) read() uint64 {
+func (r *limitReader) Read() Item {
 	if r.unread > 0 {
 		r.unread -= 1
-		item := r.reader.read()
+		item := r.reader.Read()
 		return item
 	}
 	panic("")
 }
 
-//func FunnelSort(in <-chan uint64, N uint64) <-chan uint64 {
 func FunnelSort(in Reader, out Writer) {
-	const α = 1 << 5 // α >= 1
+	const α = 1 << 22 // α >= 1
 	const z = 2      // z-way base merger
 	const d = 3      // k-funnels generating output of size k^d
 	N := in.Unread()
 	if N <= α*z*d {
 		buffer := make(ItemSlice, 0, N)
 		for i := N; i > 0; i-- {
-			buffer = append(buffer, in.read())
+			buffer = append(buffer, in.Read())
 		}
 		sort.Sort(buffer)
 		for _, item := range buffer {
-			out.write(item)
+			out.Write(item)
 		}
 	} else {
 		// split in into roughly equal-sized arrays Si, 0 ≤ i < (|in|/α)1/d
@@ -70,7 +69,7 @@ func FunnelSort(in Reader, out Writer) {
 		f.Fill(S, b)
 		f.Close()
 		for i := N; i > 0; i-- {
-			out.write(b.read())
+			out.Write(b.Read())
 		}
 	}
 }

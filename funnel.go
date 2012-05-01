@@ -1,4 +1,4 @@
-package funnel
+package funnelsort
 
 import (
 	"math"
@@ -75,16 +75,16 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 				f.exhausted = true
 				break
 			} else {
-				out.write(f.right.out.read())
+				out.Write(f.right.out.Read())
 			}
 		} else {
 			if f.right.out.empty() {
-				out.write(f.left.out.read())
+				out.Write(f.left.out.Read())
 			} else {
 				if f.left.out.peek() < f.right.out.peek() {
-					out.write(f.left.out.read())
+					out.Write(f.left.out.Read())
 				} else {
-					out.write(f.right.out.read())
+					out.Write(f.right.out.Read())
 				}
 			}
 		}

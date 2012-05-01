@@ -1,4 +1,4 @@
-package funnel
+package funnelsort
 
 import (
 	"testing"
@@ -6,16 +6,16 @@ import (
 
 func TestBuffer(t *testing.T) {
 	out := NewBuffer(5)
-	out.write(23)
-	out.write(34)
-	out.write(45)
-	if out.read() != 23 {
+	out.Write(23)
+	out.Write(34)
+	out.Write(45)
+	if out.Read() != 23 {
 		t.Fail()
 	}
-	if out.read() != 34 {
+	if out.Read() != 34 {
 		t.Fail()
 	}
-	if out.read() != 45 {
+	if out.Read() != 45 {
 		t.Fail()
 	}
 }
@@ -27,7 +27,7 @@ func TestBuffer(t *testing.T) {
 // func TestBufferLeak(t *testing.T) {
 //  	for i := 1<<20; i>0; i-- {
 //  		out := NewBuffer(1<<10)
-//  		out.read()
+//  		out.Read()
 // 		out.Close()
 //  	}
 // }
