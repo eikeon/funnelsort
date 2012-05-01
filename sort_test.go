@@ -1,30 +1,45 @@
 package funnel
 
 import (
+	"math/rand"
 	"testing"
 )
 
-func TestRandomItems(t *testing.T) {
+type Increasing struct {
+	outOfOrder bool
+	last       uint64
+}
 
-	n := uint64(2048)
-	c := RandomItems(n)
-	i := uint64(0)
-	for _ = range c {
-		i += 1
-		//t.Logf("%d\n", item)
+func (w *Increasing) write(item uint64) {
+	if w.last > item {
+		w.outOfOrder = true
 	}
-	if i != n {
-		t.Error("channel should be empty")
-		t.FailNow()
+	w.last = item
+}
+
+type Random struct {
+	unread uint64
+}
+
+func (r *Random) Unread() uint64 {
+	return r.unread
+}
+
+func (r *Random) read() uint64 {
+	if r.unread > 0 {
+		r.unread -= 1
+		return uint64(rand.Int63())
 	}
+	panic("")
 }
 
 func TestFunnelSort(t *testing.T) {
-	n := uint64(1 << 15)
+	n := uint64(1 << 14)
 	t.Log("n:", n)
-	out := FunnelSort(RandomItems(n), n)
+	increasing := &Increasing{}
+	FunnelSort(&Random{n}, increasing)
 
-	if Increasing(out, n) == false {
+	if increasing.outOfOrder {
 		t.Error("output not sorted")
 		t.FailNow()
 	}
@@ -32,12 +47,14 @@ func TestFunnelSort(t *testing.T) {
 
 func Sort(p uint) bool {
 	n := uint64(1 << p)
-	return Increasing(FunnelSort(RandomItems(n), n), n)
+	increasing := &Increasing{}
+	FunnelSort(&Random{n}, increasing)
+	return increasing.outOfOrder
 }
 
 func Benchmark4(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		if Sort(4) == false {
+		if Sort(4) {
 			b.FailNow()
 		}
 	}
@@ -45,7 +62,7 @@ func Benchmark4(b *testing.B) {
 
 func Benchmark5(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		if Sort(5) == false {
+		if Sort(5) {
 			b.FailNow()
 		}
 	}
@@ -53,7 +70,7 @@ func Benchmark5(b *testing.B) {
 
 func Benchmark6(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		if Sort(6) == false {
+		if Sort(6) {
 			b.FailNow()
 		}
 	}

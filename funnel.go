@@ -9,10 +9,7 @@ func hyperceil(x float64) uint64 {
 }
 
 type Funnel struct {
-	// number of inputs to the funnel
-	// k           uint32 
 	height      uint64
-
 	index       int
 	exhausted   bool
 	out         Buffer
@@ -24,10 +21,6 @@ type Funnel struct {
 
 func (f *Funnel) K() uint64 {
 	return uint64(math.Exp2(float64(f.height)))
-}
-
-func (f *Funnel) Height() uint64 {
-	return f.height
 }
 
 func (f *Funnel) root() (root *Funnel) {
@@ -98,7 +91,7 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 	}
 }
 
-func NewFunnel(height uint64) *Funnel {  // TODO: switch from height to K?
+func NewFunnel(height uint64) *Funnel { // TODO: switch from height to K?
 	f := &Funnel{height: height}
 	if height > 1 {
 		heightBottom := hyperceil(float64(height) / 2.)
@@ -107,7 +100,7 @@ func NewFunnel(height uint64) *Funnel {  // TODO: switch from height to K?
 		k := f.top.K()
 		f.bottom = make([]*Funnel, k)
 		bsize := uint64(math.Ceil(math.Pow(float64(k), 1.5)))
-		f.buffer = NewBuffer(uint64(bsize * (k+1)))
+		f.buffer = NewBuffer(uint64(bsize * (k + 1)))
 		f.top.out = f.buffer.SubBuffer(uint64(k)*bsize, bsize)
 		for i, _ := range f.bottom {
 			f.bottom[i] = NewFunnel(heightBottom)

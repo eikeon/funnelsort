@@ -10,12 +10,11 @@ import (
 )
 
 type Buffer interface {
-	read() uint64
-	write(a uint64)
+	Reader
+	Writer
+	peek() uint64
 	empty() bool
 	full() bool
-	Length() uint64
-	peek() uint64
 	reset()
 	Close()
 	SubBuffer(offset, max uint64) Buffer
@@ -39,9 +38,9 @@ func NewBuffer(n uint64) *MMBuffer {
 }
 
 type MMBuffer struct {
-	current_block   int
-	_data           []byte
-	map_file        *os.File
+	current_block           int
+	_data                   []byte
+	map_file                *os.File
 	offset, head, tail, max uint64
 }
 
@@ -92,7 +91,7 @@ func fromIndex(n uint64) (int, int) {
 	return int(i / uint64(BLOCK_SIZE)), int(i % uint64(BLOCK_SIZE))
 }
 
-func (b *MMBuffer) Length() uint64 {
+func (b *MMBuffer) Unread() uint64 {
 	return b.tail - b.head
 }
 
@@ -126,3 +125,62 @@ func (b *MMBuffer) write(a uint64) {
 	b.tail += 1
 }
 
+type ChBuffer struct {
+	ch        chan uint64
+	unread    uint64
+	hasPeek   bool
+	peekValue uint64
+}
+
+func NewChBuffer(n uint64) Buffer {
+	return &ChBuffer{ch: make(chan uint64, n)}
+}
+
+func (b *ChBuffer) write(item uint64) {
+	b.hasPeek = false
+	b.unread += 1
+	b.ch <- item
+}
+
+func (b *ChBuffer) Close() {
+	close(b.ch)
+}
+
+func (b *ChBuffer) SubBuffer(offset, max uint64) Buffer {
+	panic("")
+}
+
+func (b *ChBuffer) Unread() uint64 {
+	return b.unread
+}
+
+func (b *ChBuffer) empty() bool {
+	return b.unread == 0 && b.hasPeek == false
+}
+
+func (b *ChBuffer) full() bool {
+	return b.unread == uint64(cap(b.ch))
+}
+
+func (b *ChBuffer) peek() uint64 {
+	if b.hasPeek == false {
+		b.peekValue = b.read()
+		b.hasPeek = true
+	}
+	return b.peekValue
+}
+
+func (b *ChBuffer) read() uint64 {
+	if b.hasPeek {
+		b.hasPeek = false
+		return b.peekValue
+	}
+	b.unread -= 1
+	return <-b.ch
+}
+
+func (b *ChBuffer) reset() {
+	if !b.empty() {
+		panic("")
+	}
+}
