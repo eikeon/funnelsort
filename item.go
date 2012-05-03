@@ -1,9 +1,16 @@
 package funnelsort
 
-type Item uint64
+type Item interface {
+	Write(b []byte)
+	Read(b []byte)
+	Less(b Item) bool
+}
 
-type ItemSlice []Item
+var LessItem func(a, b Item) bool
+var NewItem func() Item
 
-func (p ItemSlice) Len() int           { return len(p) }
-func (p ItemSlice) Less(i, j int) bool { return p[i] < p[j] }
-func (p ItemSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
+type itemSlice []Item
+
+func (p itemSlice) Len() int           { return len(p) }
+func (p itemSlice) Less(i, j int) bool { return p[i].Less(p[j]) }
+func (p itemSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }

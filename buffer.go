@@ -1,12 +1,10 @@
 package funnelsort
 
 import (
-	"encoding/binary"
 	"io/ioutil"
 	"log"
 	"os"
 	"syscall"
-	"unsafe"
 )
 
 type Buffer interface {
@@ -83,8 +81,13 @@ func (b *MMBuffer) SubBuffer(offset, max uint64) Buffer {
 	return &MMBuffer{offset: offset, max: max, map_file: b.map_file}
 }
 
-const SIZE = int(unsafe.Sizeof(Item(0)))
-const BLOCK_SIZE = 4096 * SIZE
+var SIZE int
+var BLOCK_SIZE int
+
+func SetSize(size int) {
+	SIZE = size
+	BLOCK_SIZE = (1<<16) * size //4096 * size
+}
 
 func fromIndex(n uint64) (int, int) {
 	i := n * uint64(SIZE)
@@ -105,13 +108,17 @@ func (b *MMBuffer) full() bool {
 
 func (b *MMBuffer) peek() Item {
 	block_number, i := fromIndex(b.offset + b.head)
-	return Item(binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE]))
+	item := NewItem()
+	item.Read(b.data(block_number)[i : i+SIZE])
+	return item
 }
 
 func (b *MMBuffer) Read() Item {
 	block_number, i := fromIndex(b.offset + b.head)
 	b.head += 1
-	return Item(binary.LittleEndian.Uint64(b.data(block_number)[i : i+SIZE]))
+	item := NewItem()
+	item.Read(b.data(block_number)[i : i+SIZE])
+	return item
 }
 
 func (b *MMBuffer) reset() {
@@ -121,7 +128,7 @@ func (b *MMBuffer) reset() {
 
 func (b *MMBuffer) Write(a Item) {
 	block_number, i := fromIndex(b.offset + b.tail)
-	binary.LittleEndian.PutUint64(b.data(block_number)[i:i+SIZE], uint64(a))
+	a.Write(b.data(block_number)[i:i+SIZE])
 	b.tail += 1
 }
 

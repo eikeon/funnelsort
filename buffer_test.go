@@ -6,16 +6,16 @@ import (
 
 func TestBuffer(t *testing.T) {
 	out := NewBuffer(5)
-	out.Write(23)
-	out.Write(34)
-	out.Write(45)
-	if out.Read() != 23 {
+	out.Write(&intItem{key:23})
+	out.Write(&intItem{key:34})
+	out.Write(&intItem{key:45})
+	if out.Read().(*intItem).key != 23 {
 		t.Fail()
 	}
-	if out.Read() != 34 {
+	if out.Read().(*intItem).key != 34 {
 		t.Fail()
 	}
-	if out.Read() != 45 {
+	if out.Read().(*intItem).key != 45 {
 		t.Fail()
 	}
 }

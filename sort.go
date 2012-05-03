@@ -34,12 +34,12 @@ func (r *limitReader) Read() Item {
 }
 
 func FunnelSort(in Reader, out Writer) {
-	const α = 1 << 22 // α >= 1
+	const α = 1 << 15 // α >= 1
 	const z = 2      // z-way base merger
 	const d = 3      // k-funnels generating output of size k^d
 	N := in.Unread()
 	if N <= α*z*d {
-		buffer := make(ItemSlice, 0, N)
+		buffer := make(itemSlice, 0, N)
 		for i := N; i > 0; i-- {
 			buffer = append(buffer, in.Read())
 		}
@@ -55,17 +55,19 @@ func FunnelSort(in Reader, out Writer) {
 		k := f.K()
 		S := make([]Buffer, k)
 		bsize := uint64(math.Ceil(float64(N) / float64(k)))
+		remaining := N
 		for i := uint64(0); i < k; i++ {
 			var n uint64
-			if i*bsize+bsize > N {
-				n = N - (i*bsize + bsize)
+			if i == k-1 {
+				n = remaining
 			} else {
 				n = bsize
+				remaining -= n
 			}
-			S[i] = NewChBuffer(n)
+			S[i] = NewBuffer(n) //S[i] = NewChBuffer(n)
 			FunnelSort(&limitReader{in, n}, S[i])
 		}
-		b := NewChBuffer(N)
+		b := NewBuffer(N) //b := NewChBuffer(N)
 		f.Fill(S, b)
 		f.Close()
 		for i := N; i > 0; i-- {

@@ -81,7 +81,7 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 			if f.right.out.empty() {
 				out.Write(f.left.out.Read())
 			} else {
-				if f.left.out.peek() < f.right.out.peek() {
+				if f.left.out.peek().Less(f.right.out.peek()) {
 					out.Write(f.left.out.Read())
 				} else {
 					out.Write(f.right.out.Read())
