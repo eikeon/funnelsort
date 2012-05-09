@@ -5,17 +5,19 @@ import (
 )
 
 func TestBuffer(t *testing.T) {
+	NewItem = newItem
+
 	out := NewBuffer(5)
-	out.Write(&intItem{key:23})
-	out.Write(&intItem{key:34})
-	out.Write(&intItem{key:45})
-	if out.Read().(*intItem).key != 23 {
+	out.Write(&intItem{23})
+	out.Write(&intItem{34})
+	out.Write(&intItem{45})
+	if uint64(out.Read().(*intItem).Value) != 23 {
 		t.Fail()
 	}
-	if out.Read().(*intItem).key != 34 {
+	if uint64(out.Read().(*intItem).Value) != 34 {
 		t.Fail()
 	}
-	if out.Read().(*intItem).key != 45 {
+	if uint64(out.Read().(*intItem).Value) != 45 {
 		t.Fail()
 	}
 }

@@ -16,7 +16,6 @@ type Funnel struct {
 	left, right *Funnel
 	top         *Funnel
 	bottom      []*Funnel
-	buffer      Buffer
 }
 
 func (f *Funnel) K() uint64 {
@@ -72,6 +71,8 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 		}
 		if f.left.out.empty() {
 			if f.right.out.empty() {
+				f.left.out.Close()
+				f.right.out.Close()
 				f.exhausted = true
 				break
 			} else {
@@ -100,11 +101,10 @@ func NewFunnel(height uint64) *Funnel { // TODO: switch from height to K?
 		k := f.top.K()
 		f.bottom = make([]*Funnel, k)
 		bsize := uint64(math.Ceil(math.Pow(float64(k), 1.5)))
-		f.buffer = NewBuffer(uint64(bsize * (k + 1)))
-		f.top.out = f.buffer.SubBuffer(uint64(k)*bsize, bsize)
+		f.top.out = NewBuffer(bsize)
 		for i, _ := range f.bottom {
 			f.bottom[i] = NewFunnel(heightBottom)
-			f.bottom[i].out = f.buffer.SubBuffer(uint64(i)*bsize, bsize)
+			f.bottom[i].out = NewBuffer(bsize)
 		}
 		f.attach(f.top.root(), 0)
 	}
@@ -119,15 +119,15 @@ func (f *Funnel) Fill(in []Buffer, out Buffer) {
 }
 
 func (f *Funnel) Close() {
-	if f.buffer != nil {
-		f.buffer.Close()
-	}
 	if f.top != nil {
 		f.top.Close()
 	}
-	//if f.out != nil {
-	//	f.out.Close()
-	//}
+	for _, b := range f.bottom {
+		b.Close()
+	}
+	if f.out != nil {
+		f.out.Close()
+	}
 	if f.left != nil {
 		f.left.Close()
 	}

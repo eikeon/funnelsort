@@ -3,35 +3,22 @@ package funnelsort
 import (
 	"math/rand"
 	"testing"
-	"encoding/binary"
-	"unsafe"
 )
 
-const KEY_SIZE = int(unsafe.Sizeof(uint64(0)))
-const VALUE_SIZE = 2048
-const ITEM_SIZE = KEY_SIZE + VALUE_SIZE
-
 type intItem struct {
-	key uint64
-	value [VALUE_SIZE]byte
-}
-
-func (i *intItem) Write(b []byte) {
-	binary.LittleEndian.PutUint64(b[0:SIZE], i.key)
-}
-
-func (i *intItem) Read(b []byte) {
-	i.key = binary.LittleEndian.Uint64(b[0 : SIZE])
+	Value uint64
 }
 
 func (i *intItem) Less(b Item) bool {
-	return i.key < b.(*intItem).key
+	return i.Value < b.(*intItem).Value
 }
 
-//func lessItem(a, b Item) bool { return a.(*intItem).key < b.(*intItem).key }
+// func lessItem(a, b Item) bool {
+// 	return a.(*intItem).Value < b.(*intItem).Value
+// }
 
 func newItem() Item {
-	return &intItem{}
+	return &intItem{0}
 }
 
 type Increasing struct {
@@ -57,17 +44,15 @@ func (r *Random) Unread() uint64 {
 func (r *Random) Read() Item {
 	if r.unread > 0 {
 		r.unread -= 1
-		return &intItem{key:uint64(rand.Int63())}
+		return &intItem{uint64(rand.Int63())}
 	}
 	panic("")
 }
 
 func TestFunnelSort(t *testing.T) {
 	n := uint64(1 << 14)
-	t.Log("n:", n)
 	increasing := &Increasing{}
 	NewItem = newItem
-	SetSize(ITEM_SIZE)
 	FunnelSort(&Random{n}, increasing)
 
 	if increasing.outOfOrder {
@@ -80,7 +65,6 @@ func Sort(p uint) bool {
 	n := uint64(1 << p)
 	increasing := &Increasing{}
 	NewItem = newItem
-	SetSize(ITEM_SIZE)
 	FunnelSort(&Random{n}, increasing)
 	return increasing.outOfOrder
 }
