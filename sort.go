@@ -34,9 +34,9 @@ func (r *limitReader) Read() Item {
 }
 
 func FunnelSort(in Reader, out Writer) {
-	const α = 1 << 15 // α >= 1
-	const z = 2       // z-way base merger
-	const d = 3       // k-funnels generating output of size k^d
+	const α = 1 << 5 // α >= 1
+	const z = 2      // z-way base merger
+	const d = 3      // k-funnels generating output of size k^d
 	N := in.Unread()
 	if N <= α*z*d {
 		buffer := make(itemSlice, 0, N)
