@@ -14,6 +14,7 @@ type MMBuffer struct {
 	buf  []byte
 	off  int
 	mmap []byte
+	mapped bool
 }
 
 func (b *MMBuffer) Len() int { return len(b.buf) - b.off }
@@ -45,6 +46,9 @@ func (b *MMBuffer) Write(p []byte) (n int, err error) {
 }
 
 func (b *MMBuffer) Read(p []byte) (n int, err error) {
+	if b.mapped == false {
+		b.Map(len(b.buf))
+	}
 	if b.off >= len(b.buf) {
 		// MMBuffer is empty, reset to recover space.
 		b.Reset()
@@ -65,6 +69,7 @@ func (b *MMBuffer) unmap() {
 			panic(err)
 		}
 		b.mmap = []byte{}
+		b.mapped = false
 	}
 }
 
@@ -91,6 +96,7 @@ func (b *MMBuffer) Map(capacity int) []byte {
 	if err != nil {
 		panic(err)
 	}
+	b.mapped = true
 	return mmap
 }
 
@@ -129,6 +135,7 @@ const MAX_BUFFER_SIZE = (1 << 28)
 func (mr *LargeBuffer) Write(p []byte) (n int, err error) {
 	current := mr.buffers[len(mr.buffers)-1]
 	if len(current.buf)+len(p) > MAX_BUFFER_SIZE {
+		current.unmap()
 		current = NewMMBuffer()
 		mr.buffers = append(mr.buffers, current)
 	}
