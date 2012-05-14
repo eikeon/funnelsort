@@ -80,6 +80,7 @@ func (b *FBuffer) Write(a Item) {
 	b.bio.WriteByte(byte(l >> 24))
 
 	b.bio.Write(a.Value())
+	//b.bio.Flush()
 }
 
 func (b *FBuffer) read() Item {
@@ -104,7 +105,10 @@ func (b *FBuffer) read() Item {
 
 	value := tb[0:l]
 
-	item := NewItem(int64(key), value)
+	bb := make([]byte, l)
+	copy(bb, value)
+
+	item := NewItem(int64(key), bb)
 	return item
 }
 
