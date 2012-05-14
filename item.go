@@ -2,10 +2,12 @@ package funnelsort
 
 type Item interface {
 	Less(b Item) bool
+	Key() int64
+	Value() []byte
 }
 
 //var LessItem func(a, b Item) bool
-var NewItem func() Item
+var NewItem func(key int64, value []byte) Item
 
 type itemSlice []Item
 

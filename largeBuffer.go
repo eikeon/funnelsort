@@ -83,13 +83,19 @@ func (b *MMBuffer) Close() {
 }
 
 func (b *MMBuffer) Map(capacity int) []byte {
-	_, err := b.file.Seek(int64(capacity-1), 0)
+	fi, err := b.file.Stat()
 	if err != nil {
 		panic(err)
 	}
-	_, err = b.file.Write([]byte(" "))
-	if err != nil {
-		panic(err)
+	if int64(capacity) > fi.Size() {
+		_, err = b.file.Seek(int64(capacity-1), 0)
+		if err != nil {
+			panic(err)
+		}
+		_, err = b.file.Write([]byte(" "))
+		if err != nil {
+			panic(err)
+		}
 	}
 	b.unmap()
 	mmap, err := syscall.Mmap(int(b.file.Fd()), 0, capacity, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
@@ -130,7 +136,7 @@ func (mr *LargeBuffer) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
 }
 
-const MAX_BUFFER_SIZE = (1 << 28)
+const MAX_BUFFER_SIZE = (1 << 30)
 
 func (mr *LargeBuffer) Write(p []byte) (n int, err error) {
 	current := mr.buffers[len(mr.buffers)-1]
