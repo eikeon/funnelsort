@@ -58,6 +58,7 @@ func (b *FBuffer) reset() {
 	b.buffer = NewLargeBuffer()
 	b.gzw = gzip.NewWriter(b.buffer)
 	b.w = bufio.NewWriterSize(b.gzw, 1 << 18)
+	b.r = nil
 }
 
 func (b *FBuffer) Write(a Item) {

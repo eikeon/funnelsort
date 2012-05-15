@@ -5,8 +5,14 @@ import (
 	"io"
 )
 
+type mBuffer interface {
+	io.Reader
+	io.Writer
+	Len() int
+}
+
 type LargeBuffer struct {
-	buffers []*bytes.Buffer
+	buffers []mBuffer
 }
 
 func (mr *LargeBuffer) Read(p []byte) (n int, err error) {
@@ -26,12 +32,16 @@ func (mr *LargeBuffer) Read(p []byte) (n int, err error) {
 	return 0, io.EOF
 }
 
-const MAX_BUFFER_SIZE = (1 << 14)
+const MAX_BUFFER_SIZE = (1 << 30)
 
-func (mr *LargeBuffer) addBuffer() *bytes.Buffer {
-	current := bytes.NewBuffer(make([]byte, MAX_BUFFER_SIZE)[0:0])
-	mr.buffers = append(mr.buffers, current)
-	return current
+func (mr *LargeBuffer) addBuffer() (buffer mBuffer) {
+	if false { // TODO
+		buffer = bytes.NewBuffer(make([]byte, MAX_BUFFER_SIZE)[0:0])
+	} else {
+		buffer = NewMMBuffer()
+	}
+	mr.buffers = append(mr.buffers, buffer)
+	return
 }
 
 func (mr *LargeBuffer) Write(p []byte) (n int, err error) {
@@ -58,8 +68,14 @@ func (mr *LargeBuffer) Write(p []byte) (n int, err error) {
 	return current.Write(p)
 }
 
-func (mr *LargeBuffer) Close() {
+func (mr *LargeBuffer) Close() error {
+	for _, b := range mr.buffers {
+		if c, ok := b.(io.Closer); ok {
+			c.Close()
+		}
+	}
 	mr.buffers = nil
+	return nil
 }
 
 func NewLargeBuffer() *LargeBuffer {
