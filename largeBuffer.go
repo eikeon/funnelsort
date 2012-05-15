@@ -27,6 +27,9 @@ func (mr *LargeBuffer) Read(p []byte) (n int, err error) {
 			}
 			return
 		}
+		if c, ok := current.(io.Closer); ok {
+			c.Close()
+		}
 		mr.buffers = mr.buffers[1:]
 	}
 	return 0, io.EOF
