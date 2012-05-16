@@ -23,6 +23,7 @@ type Buffer interface {
 
 func NewBuffer(n uint64) *FBuffer {
 	b := &FBuffer{max: n}
+	b.buffer = NewLargeBuffer()
 	b.reset()
 	return b
 }
@@ -55,8 +56,12 @@ func (b *FBuffer) full() bool {
 func (b *FBuffer) reset() {
 	b.unread = 0
 	b.peekItem = nil
-	b.buffer = NewLargeBuffer()
-	b.gzw = gzip.NewWriter(b.buffer)
+	b.buffer.Reset()
+	w, err := gzip.NewWriterLevel(b.buffer, gzip.BestSpeed)
+	if err != nil {
+		panic(err)
+	}
+	b.gzw = w
 	b.w = bufio.NewWriterSize(b.gzw, 1 << 18)
 	b.r = nil
 }
