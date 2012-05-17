@@ -2,7 +2,7 @@ package funnelsort
 
 import (
 	"bufio"
-	"compress/gzip"
+	//"compress/gzip"
 	"encoding/binary"
 	"io"
 )
@@ -33,8 +33,8 @@ type FBuffer struct {
 	buffer      *LargeBuffer
 	r           *bufio.Reader
 	w           *bufio.Writer
-	gzw         *gzip.Writer
-	peekItem    Item
+	//gzw         *gzip.Writer
+	//peekItem    Item
 }
 
 func (b *FBuffer) Close() {
@@ -55,14 +55,16 @@ func (b *FBuffer) full() bool {
 
 func (b *FBuffer) reset() {
 	b.unread = 0
-	b.peekItem = nil
+	//b.peekItem = nil
 	b.buffer.Reset()
-	w, err := gzip.NewWriterLevel(b.buffer, gzip.BestSpeed)
-	if err != nil {
-		panic(err)
-	}
-	b.gzw = w
-	b.w = bufio.NewWriterSize(b.gzw, 1 << 18)
+	// w, err := gzip.NewWriterLevel(b.buffer, gzip.BestSpeed)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	//b.gzw = w
+	//b.w = bufio.NewWriterSize(b.gzw, 1 << 18)
+	//b.w = bufio.NewWriterSize(b.buffer, 1 << 18)
+	b.w = bufio.NewWriterSize(b.buffer, 512)
 	b.r = nil
 }
 
@@ -90,18 +92,57 @@ func (b *FBuffer) Write(a Item) {
 	b.w.Write(a.Value())
 }
 
-func (b *FBuffer) read() Item {
-	b.w.Flush()
-	b.gzw.Close()
-
-	if b.r == nil {
-		gz, err := gzip.NewReader(b.buffer)
-		if err != nil {
-			panic(err)
-		}
-		b.r = bufio.NewReaderSize(gz, 1 << 18)
+func (b *FBuffer) doneWriting() {
+	if b.unread == 0 {
+		return
 	}
+	if b.r == nil {
+		b.w.Flush()
+		//b.gzw.Close()
+		// gz, err := gzip.NewReader(b.buffer)
+		// if err != nil {
+		// 	panic(err)
+		// }
+		// b.r = bufio.NewReaderSize(gz, 1 << 18)
+		//b.r = bufio.NewReaderSize(b.buffer, 1 << 18)
+		b.r = bufio.NewReaderSize(b.buffer, 4096)
+	}
+}
 
+func (b *FBuffer) peek() Item {
+	b.doneWriting()
+
+	if b.unread == 0 {
+		return nil
+	}
+	
+	tb, err := b.r.Peek(12)
+	if err != nil {
+		panic(err)
+	}
+	key := binary.LittleEndian.Uint64(tb[0:8])
+
+        l := binary.LittleEndian.Uint32(tb[8:12])
+
+	tb, err = b.r.Peek(int(12+l))
+	if err != nil {
+		panic(err)
+	}
+	value := tb[12:12+l]
+	//value := make([]byte, l)
+	//copy(value, tb[12:12+l])
+
+	item := NewItem(int64(key), value)
+	return item
+}
+
+func (b *FBuffer) Read() Item {
+	b.doneWriting()
+
+	if b.unread == 0 {
+		return nil
+	}
+ 
 	n, err := io.ReadFull(b.r, tb[0:8])
 	if n!=8 || err != nil {
 		panic(err)
@@ -114,30 +155,13 @@ func (b *FBuffer) read() Item {
 	}
         l := binary.LittleEndian.Uint32(tb[0:4])
 
-	n, err = io.ReadFull(b.r, tb[0:l])
+	value := make([]byte, l)
+	n, err = io.ReadFull(b.r, value)
 	if n!=int(l) || err != nil {
 		panic(err)
 	}
 
-	value := tb[0:l]
-
-	bb := make([]byte, l)
-	copy(bb, value)
-
-	item := NewItem(int64(key), bb)
-	return item
-}
-
-func (b *FBuffer) peek() Item {
-	if b.peekItem == nil {
-		b.peekItem = b.read()
-	}
-	return b.peekItem
-}
-
-func (b *FBuffer) Read() Item {
-	item := b.peek()
-	b.peekItem = nil
+	item := NewItem(int64(key), value)
 	b.unread -= 1
 	return item
 }
