@@ -92,6 +92,12 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 	}
 }
 
+func NewFunnelK(k int) *Funnel {
+	kk := uint64(hyperceil(float64(k)))
+	h := uint64(math.Ceil(math.Log2(float64(kk))))
+	return NewFunnel(h)
+}
+
 func NewFunnel(height uint64) *Funnel { // TODO: switch from height to K?
 	f := &Funnel{height: height}
 	if height > 1 {

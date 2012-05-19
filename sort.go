@@ -1,86 +1,90 @@
 package funnelsort
 
 import (
-	"math"
 	"sort"
+	//"log"
+	"math"
 )
 
 type Reader interface {
 	Read() Item
-	Unread() uint64 // TODO: big.Int ?
 }
 
 type Writer interface {
 	Write(i Item)
-	// Written() uint64
 }
 
-func FunnelSort(in Reader, out Writer) {
-	const p = uint(12)
-	const kSquared = 1 << p
-	kMax := 1 << (p / 2)
+const p = uint(14)
+const kSquared = 1 << p
+var itemArray [kSquared]Item
 
-	var done bool
-	var buffers []Buffer
-	top:
-	for j := 0; j < kMax; j++ {
-		buffer := &itemBuffer{make(itemSlice, 0, kSquared)}
-		for i := 0; i < kSquared; i++ {
-			item := in.Read()
-			if item != nil {
-				buffer.buf = append(buffer.buf, item)
-			} else {
-				done = true
-				break
-			}
-		}
-		sort.Sort(buffer.buf)
-		if len(buffer.buf)>0 {
-			buffers = append(buffers, buffer)
-		}
-		if done == true {
+func manual(in Reader) (items itemSlice, done bool) {
+	items = itemSlice(itemArray[0:0])
+	for i := 0; i < kSquared; i++ {
+		if item := in.Read(); item != nil {
+			items = append(items, item)
+		} else {
+			done = true
 			break
 		}
 	}
-	
-	if done && len(buffers)==1 {
-		buffer := buffers[0]
-		for {
-			item := buffer.Read()
-			if item != nil {
-				out.Write(item)
-			} else {
-				break
-			}
-		}
-	} else {
-		k := uint64(hyperceil(float64(len(buffers))))
-		h := uint64(math.Floor(math.Log2(float64(k))))
-		f := NewFunnel(h)
-		fout := NewBuffer(1 << 63)
+	sort.Sort(items)
+	return
+}
 
-		// pad the remaining input with empty buffers
-		for len(buffers) < int(k) {
-			buffer := &itemBuffer{make(itemSlice, 0)}
-			buffers = append(buffers, buffer)
+func FunnelSort(in Reader, out Writer) {
+	items, done := manual(in)
+	if done {
+		for _, item := range items {
+			out.Write(item)
 		}
+		return
+	}
 
-		f.Fill(buffers, fout)
-
-		for i := uint64(0); i < k; i++ {
-			buffers[i].Close()
+	var buffers []Buffer
+	kMax := 1 << (p / 2)
+	top:
+	for j := 0; j < kMax; j++ {
+		buffer := NewBuffer(1 << 63)
+		for _, item := range items {
+			buffer.Write(item)
 		}
+		buffers = append(buffers, buffer)
 		if done {
-			for i := fout.Unread(); i > 0; i-- {
-				out.Write(fout.Read())
-			}
-			fout.Close()
-			f.Close()
+			break
 		} else {
-			kMax = int(math.Sqrt(float64(fout.Unread())))
-			buffers = buffers[0:0]
-			buffers = append(buffers, fout)
-			goto top
+			items, done = manual(in)
 		}
 	}
+	
+	if done {
+		merge(buffers, &OBuffer{out})
+	} else {
+		buffer := NewBuffer(1 << 63)
+		merge(buffers, buffer)
+		buffers = buffers[0:0]
+		buffers = append(buffers, buffer)
+		kMax = int(math.Sqrt(float64(buffer.Unread())))
+		goto top
+	}
+}	
+
+
+func merge(buffers []Buffer, out Buffer)  {
+	f := NewFunnelK(len(buffers))
+
+	// pad the remaining input with empty buffers
+	for len(buffers) < int(f.K()) {
+		buffer := &itemBuffer{make(itemSlice, 0)}
+		buffers = append(buffers, buffer)
+	}
+
+	//log.Println(f.K(), len(buffers))
+
+	f.Fill(buffers, out)
+	f.Close()
+	for i := uint64(0); i < f.K(); i++ { // ?
+		buffers[i].Close()
+	}
+	return
 }

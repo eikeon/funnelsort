@@ -3,22 +3,32 @@ package funnelsort
 import (
 	"math/rand"
 	"testing"
+	"encoding/binary"
 )
 
 type intItem struct {
-	Value uint64
+	value uint64
 }
 
 func (i *intItem) Less(b Item) bool {
-	return i.Value < b.(*intItem).Value
+	return i.value < b.(*intItem).value
 }
 
-// func lessItem(a, b Item) bool {
-// 	return a.(*intItem).Value < b.(*intItem).Value
-// }
+func (i *intItem) Bytes() []byte {
+	b := make([]byte, 8)
+	b[0] = byte(i.value)
+	b[1] = byte(i.value >> 8)
+	b[2] = byte(i.value >> 16)
+	b[3] = byte(i.value >> 24)
+	b[4] = byte(i.value >> 32)
+	b[5] = byte(i.value >> 40)
+	b[6] = byte(i.value >> 48)
+	b[7] = byte(i.value >> 56)
+	return b
+}
 
-func newItem() Item {
-	return &intItem{0}
+func newItem(b []byte) Item {
+	return &intItem{binary.LittleEndian.Uint64(b[0:8])}
 }
 
 type Increasing struct {
@@ -46,7 +56,7 @@ func (r *Random) Read() Item {
 		r.unread -= 1
 		return &intItem{uint64(rand.Int63())}
 	}
-	panic("")
+	return nil
 }
 
 func TestFunnelSort(t *testing.T) {

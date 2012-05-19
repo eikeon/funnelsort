@@ -11,13 +11,13 @@ func TestBuffer(t *testing.T) {
 	out.Write(&intItem{23})
 	out.Write(&intItem{34})
 	out.Write(&intItem{45})
-	if uint64(out.Read().(*intItem).Value) != 23 {
+	if out.Read().(*intItem).value != 23 {
 		t.Fail()
 	}
-	if uint64(out.Read().(*intItem).Value) != 34 {
+	if out.Read().(*intItem).value != 34 {
 		t.Fail()
 	}
-	if uint64(out.Read().(*intItem).Value) != 45 {
+	if out.Read().(*intItem).value != 45 {
 		t.Fail()
 	}
 }
