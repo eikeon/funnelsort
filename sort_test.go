@@ -1,24 +1,35 @@
 package funnelsort
 
 import (
+	"encoding/binary"
 	"math/rand"
 	"testing"
 )
 
 type intItem struct {
-	Value uint64
+	value uint64
 }
 
 func (i *intItem) Less(b Item) bool {
-	return i.Value < b.(*intItem).Value
+	return i.value < b.(*intItem).value
+}
+
+func (i *intItem) Key() int64 {
+	return int64(i.value)
+}
+
+func (i *intItem) Value() []byte {
+	v := make([]byte, 8)
+	binary.PutUvarint(v, i.value)
+	return v
 }
 
 // func lessItem(a, b Item) bool {
 // 	return a.(*intItem).Value < b.(*intItem).Value
 // }
 
-func newItem() Item {
-	return &intItem{0}
+func newItem(key int64, value []byte) Item {
+	return &intItem{value: uint64(key)}
 }
 
 type Increasing struct {
