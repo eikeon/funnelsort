@@ -62,7 +62,7 @@ func (b *FBuffer) reset() {
 		panic(err)
 	}
 	b.gzw = w
-	b.w = bufio.NewWriterSize(b.gzw, 1 << 18)
+	b.w = bufio.NewWriterSize(b.gzw, 1<<18)
 	b.r = nil
 }
 
@@ -99,23 +99,23 @@ func (b *FBuffer) read() Item {
 		if err != nil {
 			panic(err)
 		}
-		b.r = bufio.NewReaderSize(gz, 1 << 18)
+		b.r = bufio.NewReaderSize(gz, 1<<18)
 	}
 
 	n, err := io.ReadFull(b.r, tb[0:8])
-	if n!=8 || err != nil {
+	if n != 8 || err != nil {
 		panic(err)
 	}
 	key := binary.LittleEndian.Uint64(tb[0:8])
 
 	n, err = io.ReadFull(b.r, tb[0:4])
-	if n!=4 || err != nil {
+	if n != 4 || err != nil {
 		panic(err)
 	}
-        l := binary.LittleEndian.Uint32(tb[0:4])
+	l := binary.LittleEndian.Uint32(tb[0:4])
 
 	n, err = io.ReadFull(b.r, tb[0:l])
-	if n!=int(l) || err != nil {
+	if n != int(l) || err != nil {
 		panic(err)
 	}
 

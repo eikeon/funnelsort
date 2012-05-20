@@ -8,10 +8,10 @@ import (
 )
 
 type MMBuffer struct {
-	file *os.File
-	buf  []byte
-	off  int
-	mmap []byte
+	file   *os.File
+	buf    []byte
+	off    int
+	mmap   []byte
 	mapped bool
 }
 

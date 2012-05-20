@@ -13,7 +13,7 @@ type mBuffer interface {
 }
 
 type LargeBuffer struct {
-	buffers []mBuffer
+	buffers                     []mBuffer
 	current_read, current_write int
 }
 
@@ -60,12 +60,12 @@ func (mr *LargeBuffer) Write(p []byte) (n int, err error) {
 	if len(p) > MAX_BUFFER_SIZE {
 		written := 0
 		for written+MAX_BUFFER_SIZE < len(p) {
-			nn, _ := current.Write(p[written:written+MAX_BUFFER_SIZE])
+			nn, _ := current.Write(p[written : written+MAX_BUFFER_SIZE])
 			written += nn
 			current = mr.addBuffer()
 		}
 		remaining := len(p) - written
-		current.Write(p[written:written+remaining])
+		current.Write(p[written : written+remaining])
 		return len(p), nil
 	}
 	return current.Write(p)
