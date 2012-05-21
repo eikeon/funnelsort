@@ -7,7 +7,7 @@ import (
 func TestBuffer(t *testing.T) {
 	NewItem = newItem
 
-	out := NewBuffer(5)
+	out := NewBufferSize(5)
 	out.Write(&intItem{23})
 	out.Write(&intItem{34})
 	out.Write(&intItem{45})

@@ -1,9 +1,9 @@
 package funnelsort
 
 import (
+	"encoding/binary"
 	"math/rand"
 	"testing"
-	"encoding/binary"
 )
 
 type intItem struct {
