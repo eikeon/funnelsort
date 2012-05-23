@@ -1,9 +1,7 @@
 package funnelsort
 
 import (
-	"io/ioutil"
 	"math"
-	"os"
 	"sort"
 	"syscall"
 )
@@ -37,21 +35,12 @@ var NewItem func(b []byte) Item
 type MBuffer struct {
 	max, unread uint64
 	buffer      []byte
-	file        *os.File
 	off         int
 	mmap        []byte
-	mapped      bool
 }
 
 func (b *MBuffer) Close() {
 	b.unmap()
-	if b.file != nil {
-		b.file.Close()
-		err := os.Remove(b.file.Name())
-		if err != nil {
-			//log.Println(err)
-		}
-	}
 }
 
 func (b *MBuffer) Unread() uint64 {
@@ -63,7 +52,7 @@ func (b *MBuffer) empty() bool {
 }
 
 func (b *MBuffer) full() bool {
-	return len(b.buffer) >= (1 << 30)
+	return len(b.buffer) >= cap(b.mmap)
 }
 
 func (b *MBuffer) reset() {
@@ -77,8 +66,6 @@ func (b *MBuffer) Write(a Item) {
 	v := a.Bytes()
 	m := len(b.buffer)
 	length := len(v)
-	b.grow(length)
-
 	b.buffer = b.buffer[0 : m+length]
 	mm := copy(b.buffer[m:m+length], v)
 	if mm != length {
@@ -103,56 +90,22 @@ func (b *MBuffer) Read() Item {
 	return item
 }
 
-// grow grows the buffer to guarantee space for n more bytes.
-func (b *MBuffer) grow(n int) {
-	m := len(b.buffer)
-	if len(b.buffer)+n > cap(b.buffer) {
-		b.buffer = b.Map(2*cap(b.buffer) + n)[0:0]
-		b.off = 0
-	}
-	b.buffer = b.buffer[0 : b.off+m+n]
-}
-
-func (b *MBuffer) Map(capacity int) []byte {
-	if b.file == nil {
-		file, err := ioutil.TempFile("./", "tmpfunnelsort")
-		if err != nil {
-			panic(err)
-		}
-		b.file = file
-	}
-	fi, err := b.file.Stat()
-	if err != nil {
-		panic(err)
-	}
-	if int64(capacity) > fi.Size() {
-		_, err = b.file.Seek(int64(capacity-1), 0)
-		if err != nil {
-			panic(err)
-		}
-		_, err = b.file.Write([]byte(" "))
-		if err != nil {
-			panic(err)
-		}
-	}
-	b.unmap()
-	mmap, err := syscall.Mmap(int(b.file.Fd()), 0, capacity, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_SHARED)
-	if err != nil {
-		panic(err)
-	}
-	b.mapped = true
-	return mmap
-}
-
 func (b *MBuffer) unmap() {
 	if len(b.mmap) > 0 {
 		err := syscall.Munmap(b.mmap)
 		if err != nil {
 			panic(err)
 		}
-		b.mmap = []byte{}
-		b.mapped = false
+		b.mmap = nil
 	}
+}
+
+func NewMBuffer(capacity int) *MBuffer {
+	mmap, err := syscall.Mmap(-1, 0, capacity, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_ANON)
+	if err != nil {
+		panic(err)
+	}
+	return &MBuffer{mmap: mmap, buffer: mmap[0:0]}
 }
 
 type MultiBuffer struct {
@@ -187,7 +140,7 @@ func (mb *MultiBuffer) getBuffer(i int) Buffer {
 	if i < n {
 		return mb.buffers[i]
 	} else if i == n {
-		b := &MBuffer{}
+		b := NewMBuffer(1 << 28)
 		mb.buffers = append(mb.buffers, b)
 		return b
 	}
@@ -201,6 +154,7 @@ func (mb *MultiBuffer) Write(a Item) {
 	for ; c.full(); w++ {
 		c = mb.getBuffer(w)
 	}
+	mb.write = w
 	c.Write(a)
 }
 
@@ -211,6 +165,7 @@ func (mb *MultiBuffer) getReadBuffer() Buffer {
 	for ; c.empty(); r++ {
 		if r < n {
 			c = mb.getBuffer(r)
+			mb.read = r
 		} else {
 			return nil
 		}
