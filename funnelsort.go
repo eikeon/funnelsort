@@ -52,7 +52,7 @@ func (b *MBuffer) empty() bool {
 }
 
 func (b *MBuffer) full() bool {
-	return len(b.buffer) >= cap(b.mmap)
+	return len(b.buffer) + 4096 >= cap(b.mmap) // TODO: define max item length or somesuch
 }
 
 func (b *MBuffer) reset() {
