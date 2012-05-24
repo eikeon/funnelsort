@@ -1,13 +1,15 @@
-package funnelsort
+package funnelsort_test
 
 import (
 	"testing"
+
+	"github.com/soniakeys/funnelsort"
 )
 
 func TestBuffer(t *testing.T) {
-	NewItem = newItem
+	funnelsort.NewItem = newItem
 
-	out := NewBufferSize(5)
+	out := funnelsort.NewBufferSize(5)
 	out.Write(&intItem{23})
 	out.Write(&intItem{34})
 	out.Write(&intItem{45})

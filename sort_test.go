@@ -1,16 +1,18 @@
-package funnelsort
+package funnelsort_test
 
 import (
 	"encoding/binary"
 	"math/rand"
 	"testing"
+
+	"github.com/soniakeys/funnelsort"
 )
 
 type intItem struct {
 	value uint64
 }
 
-func (i *intItem) Less(b Item) bool {
+func (i *intItem) Less(b funnelsort.Item) bool {
 	return i.value < b.(*intItem).value
 }
 
@@ -27,16 +29,16 @@ func (i *intItem) Bytes() []byte {
 	return b
 }
 
-func newItem(b []byte) Item {
+func newItem(b []byte) funnelsort.Item {
 	return &intItem{binary.LittleEndian.Uint64(b[0:8])}
 }
 
 type Increasing struct {
 	outOfOrder bool
-	last       Item
+	last       funnelsort.Item
 }
 
-func (w *Increasing) Write(item Item) {
+func (w *Increasing) Write(item funnelsort.Item) {
 	if w.last != nil && item.Less(w.last) {
 		w.outOfOrder = true
 	}
@@ -51,7 +53,7 @@ func (r *Random) Unread() uint64 {
 	return r.unread
 }
 
-func (r *Random) Read() Item {
+func (r *Random) Read() funnelsort.Item {
 	if r.unread > 0 {
 		r.unread -= 1
 		return &intItem{uint64(rand.Int63())}
@@ -62,8 +64,8 @@ func (r *Random) Read() Item {
 func TestFunnelSort(t *testing.T) {
 	n := uint64(1 << 14)
 	increasing := &Increasing{}
-	NewItem = newItem
-	FunnelSort(&Random{n}, increasing)
+	funnelsort.NewItem = newItem
+	funnelsort.FunnelSort(&Random{n}, increasing)
 
 	if increasing.outOfOrder {
 		t.Error("output not sorted")
@@ -74,8 +76,8 @@ func TestFunnelSort(t *testing.T) {
 func Sort(p uint) bool {
 	n := uint64(1 << p)
 	increasing := &Increasing{}
-	NewItem = newItem
-	FunnelSort(&Random{n}, increasing)
+	funnelsort.NewItem = newItem
+	funnelsort.FunnelSort(&Random{n}, increasing)
 	return increasing.outOfOrder
 }
 
