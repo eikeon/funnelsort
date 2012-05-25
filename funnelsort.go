@@ -17,6 +17,13 @@ type Item interface {
 	Bytes() []byte
 }
 
+// Function funnelsort uses to create a new item from a slice of
+// bytes. The function must be set before calling FunnelSort.
+var NewItem func(b []byte) Item
+
+// The maximum length of an item in bytes.
+var MaxItemLength = 4096
+
 type Reader interface {
 	Read() Item
 }
@@ -35,8 +42,6 @@ type Buffer interface {
 	Close()
 }
 
-var NewItem func(b []byte) Item
-
 type MBuffer struct {
 	max, unread uint64
 	buffer      []byte
@@ -53,7 +58,7 @@ func (b *MBuffer) empty() bool {
 }
 
 func (b *MBuffer) full() bool {
-	return len(b.buffer)+4096 >= cap(b.mmap) // TODO: define max item length or somesuch
+	return len(b.buffer)+MaxItemLength >= cap(b.mmap)
 }
 
 func (b *MBuffer) reset() {
