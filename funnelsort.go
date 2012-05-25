@@ -44,8 +44,8 @@ type Buffer interface {
 
 type MBuffer struct {
 	unread uint64
-	buffer      []byte
-	off         int
+	buffer []byte
+	off    int
 }
 
 func (b *MBuffer) Close() {
@@ -72,45 +72,44 @@ func (b *MBuffer) Write(a Item) {
 	m := len(b.buffer)
 	length := len(v)
 	b.buffer = b.buffer[0 : m+length]
-	mm := copy(b.buffer[m:m+length], v)
-	if mm != length {
-		panic("")
+	if mm := copy(b.buffer[m:m+length], v); mm != length {
+		panic("unexpected number of bytes copied")
 	}
 }
 
-func (b *MBuffer) Peek() Item {
-	if b.unread == 0 {
-		return nil
+func (b *MBuffer) Peek() (item Item) {
+	if b.unread > 0 {
+		item = NewItem(b.buffer[b.off:])
 	}
-	return NewItem(b.buffer[b.off:])
+	return
 }
 
-func (b *MBuffer) Read() Item {
-	if b.unread == 0 {
-		return nil
+func (b *MBuffer) Read() (item Item) {
+	if b.unread > 0 {
+		b.unread -= 1
+		item = NewItem(b.buffer[b.off:])
+		b.off += len(item.Bytes())
 	}
-	b.unread -= 1
-	item := NewItem(b.buffer[b.off:])
-	b.off += len(item.Bytes())
 	return item
 }
 
 func (b *MBuffer) unmap() {
 	if cap(b.buffer) > 0 {
-		err := syscall.Munmap(b.buffer[0:cap(b.buffer)])
-		if err != nil {
+		if err := syscall.Munmap(b.buffer[0:cap(b.buffer)]); err == nil {
+			b.buffer = nil
+		} else {
 			panic(err)
 		}
-		b.buffer = nil
 	}
 }
 
-func NewMBuffer(capacity int) *MBuffer {
-	mmap, err := syscall.Mmap(-1, 0, capacity, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_ANON|syscall.MAP_PRIVATE)
-	if err != nil {
+func NewMBuffer(capacity int) (buffer *MBuffer) {
+	if mmap, err := syscall.Mmap(-1, 0, capacity, syscall.PROT_READ|syscall.PROT_WRITE, syscall.MAP_ANON|syscall.MAP_PRIVATE); err == nil {
+		buffer = &MBuffer{buffer: mmap[0:0]}
+	} else {
 		panic(err)
 	}
-	return &MBuffer{buffer: mmap[0:0]}
+	return
 }
 
 type MultiBuffer struct {
@@ -145,7 +144,7 @@ func (mb *MultiBuffer) getBuffer(i int) Buffer {
 		mb.buffers = append(mb.buffers, b)
 		return b
 	}
-	panic("")
+	panic("tried to get buffer out of range")
 }
 
 func (mb *MultiBuffer) Write(a Item) {
@@ -445,28 +444,28 @@ func FunnelSort(in Reader, out Writer) {
 
 	var buffers []Buffer
 	kMax := 1 << (p / 2)
-top:
-	for len(buffers) < kMax {
-		buffer := NewBuffer()
-		for _, item := range items {
-			buffer.Write(item)
+	for {
+		for len(buffers) < kMax {
+			buffer := NewBuffer()
+			for _, item := range items {
+				buffer.Write(item)
+			}
+			buffers = append(buffers, buffer)
+			if done {
+				break
+			} else {
+				items, done = manual(in)
+			}
 		}
-		buffers = append(buffers, buffer)
 		if done {
+			merge(buffers, out)
 			break
 		} else {
-			items, done = manual(in)
+			buffer := NewBuffer()
+			merge(buffers, buffer)
+			buffers = buffers[0:0]
+			buffers = append(buffers, buffer)
+			kMax += (1 << (p / 2))
 		}
-	}
-
-	if done {
-		merge(buffers, out)
-	} else {
-		buffer := NewBuffer()
-		merge(buffers, buffer)
-		buffers = buffers[0:0]
-		buffers = append(buffers, buffer)
-		kMax += (1 << (p / 2))
-		goto top
 	}
 }
