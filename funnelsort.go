@@ -68,13 +68,9 @@ func (b *MBuffer) Reset() {
 
 func (b *MBuffer) Write(a Item) {
 	b.unread += 1
-	v := a.Bytes()
-	m := len(b.buffer)
-	length := len(v)
-	b.buffer = b.buffer[0 : m+length]
-	if mm := copy(b.buffer[m:m+length], v); mm != length {
-		panic("unexpected number of bytes copied")
-	}
+	// The following must hold: len(b.buffer) + len(a.Bytes()) <
+	// cap(b.buffer) which is currently ensured via MaxItemLength
+	b.buffer = append(b.buffer, a.Bytes()...)
 }
 
 func (b *MBuffer) Peek() (item Item) {
@@ -149,50 +145,43 @@ func (mb *MultiBuffer) getBuffer(i int) Buffer {
 
 func (mb *MultiBuffer) Write(a Item) {
 	mb.unread += 1
-	w := mb.write
-	c := mb.getBuffer(w)
-	for ; c.Full(); w++ {
-		c = mb.getBuffer(w)
-	}
-	mb.write = w
-	c.Write(a)
-}
-
-func (mb *MultiBuffer) getReadBuffer() Buffer {
-	r := mb.read
-	c := mb.getBuffer(r)
-	n := len(mb.buffers)
-	for ; c.Empty(); r++ {
-		if r < n {
-			c = mb.getBuffer(r)
-			mb.read = r
-		} else {
-			return nil
+	for w := mb.write; ; w++ {
+		c := mb.getBuffer(w)
+		if c.Full() == false {
+			mb.write = w
+			c.Write(a)
+			break
 		}
 	}
-	return c
 }
-func (mb *MultiBuffer) Peek() (item Item) {
-	if mb.unread == 0 {
-		return nil
+
+func (mb *MultiBuffer) getReadBuffer() (buffer Buffer) {
+	for r, n := mb.read, len(mb.buffers); r<n; r++ {
+		c := mb.getBuffer(r)
+		if c.Empty() == false {
+			buffer = c
+			mb.read = r
+			break
+		}
 	}
-	if c := mb.getReadBuffer(); c != nil {
-		item = c.Peek()
-	} else {
-		item = nil
+	return
+}
+
+func (mb *MultiBuffer) Peek() (item Item) {
+	if mb.unread > 0 {
+		if c := mb.getReadBuffer(); c != nil {
+			item = c.Peek()
+		}
 	}
 	return
 }
 
 func (mb *MultiBuffer) Read() (item Item) {
-	if mb.unread == 0 {
-		return nil
-	}
-	mb.unread -= 1
-	if c := mb.getReadBuffer(); c != nil {
-		item = c.Read()
-	} else {
-		item = nil
+	if mb.unread > 0 {
+		mb.unread -= 1
+		if c := mb.getReadBuffer(); c != nil {
+			item = c.Read()
+		}
 	}
 	return
 }
@@ -443,8 +432,7 @@ func FunnelSort(in Reader, out Writer) {
 	}
 
 	var buffers []Buffer
-	kMax := 1 << (p / 2)
-	for {
+	for kMax := 1 << (p / 2); ; {
 		for len(buffers) < kMax {
 			buffer := NewBuffer()
 			for _, item := range items {
