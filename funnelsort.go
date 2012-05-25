@@ -1,3 +1,9 @@
+// Package funnelsort implements lazy funnel sort, a cache-oblivious
+// sorting algorithm.
+//
+//     http://courses.csail.mit.edu/6.851/spring12/lectures/L09.html
+//     http://www.cs.amherst.edu/~ccm/cs34/papers/a2_2-brodal.pdf
+//
 package funnelsort
 
 import (
