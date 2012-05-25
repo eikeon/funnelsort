@@ -274,14 +274,17 @@ func (f *Funnel) attachInput(in []Buffer, i int) {
 	}
 }
 
-func (f *Funnel) fill(in []Buffer, out Buffer) {
-	out.reset()
-	for out.full() == false {
+func (f *Funnel) fill(out Writer) {
+	bout, ok := out.(Buffer)
+	if ok {
+		bout.reset()
+	}
+	for bout != nil && bout.full() == false {
 		if f.left.exhausted == false && f.left.out.empty() {
-			f.left.fill(in, f.left.out)
+			f.left.fill(f.left.out)
 		}
 		if f.right.exhausted == false && f.right.out.empty() {
-			f.right.fill(in, f.right.out)
+			f.right.fill(f.right.out)
 		}
 		if f.left.out.empty() {
 			if f.right.out.empty() {
@@ -306,10 +309,10 @@ func (f *Funnel) fill(in []Buffer, out Buffer) {
 	}
 }
 
-func (f *Funnel) Fill(in []Buffer, out Buffer) {
+func (f *Funnel) Fill(in []Buffer, out Writer) {
 	root := f.root()
 	root.attachInput(in, 0)
-	root.fill(in, out)
+	root.fill(out)
 }
 
 func (f *Funnel) Close() {
@@ -425,7 +428,7 @@ func manual(in Reader) (items itemSlice, done bool) {
 
 var empty = &itemBuffer{make(itemSlice, 0)}
 
-func merge(buffers []Buffer, out Buffer) {
+func merge(buffers []Buffer, out Writer) {
 	f := NewFunnelK(len(buffers))
 
 	// pad the remaining inputs with an empty buffer
@@ -438,40 +441,6 @@ func merge(buffers []Buffer, out Buffer) {
 		b.Close()
 	}
 	return
-}
-
-type oBuffer struct {
-	out Writer
-}
-
-func (b *oBuffer) Close() {
-}
-
-func (b *oBuffer) Unread() uint64 {
-	panic("")
-}
-
-func (b *oBuffer) empty() bool {
-	panic("")
-}
-
-func (b *oBuffer) full() bool {
-	return false
-}
-
-func (b *oBuffer) reset() {
-}
-
-func (b *oBuffer) Write(a Item) {
-	b.out.Write(a)
-}
-
-func (b *oBuffer) peek() Item {
-	panic("")
-}
-
-func (b *oBuffer) Read() Item {
-	panic("")
 }
 
 func FunnelSort(in Reader, out Writer) {
@@ -500,7 +469,7 @@ top:
 	}
 
 	if done {
-		merge(buffers, &oBuffer{out})
+		merge(buffers, out)
 	} else {
 		buffer := NewBuffer()
 		merge(buffers, buffer)
