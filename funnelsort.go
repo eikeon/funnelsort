@@ -46,7 +46,6 @@ type MBuffer struct {
 	unread uint64
 	buffer      []byte
 	off         int
-	mmap        []byte
 }
 
 func (b *MBuffer) Close() {
@@ -58,7 +57,7 @@ func (b *MBuffer) Empty() bool {
 }
 
 func (b *MBuffer) Full() bool {
-	return len(b.buffer)+MaxItemLength >= cap(b.mmap)
+	return len(b.buffer)+MaxItemLength >= cap(b.buffer)
 }
 
 func (b *MBuffer) Reset() {
@@ -97,12 +96,12 @@ func (b *MBuffer) Read() Item {
 }
 
 func (b *MBuffer) unmap() {
-	if len(b.mmap) > 0 {
-		err := syscall.Munmap(b.mmap)
+	if cap(b.buffer) > 0 {
+		err := syscall.Munmap(b.buffer[0:cap(b.buffer)])
 		if err != nil {
 			panic(err)
 		}
-		b.mmap = nil
+		b.buffer = nil
 	}
 }
 
@@ -111,7 +110,7 @@ func NewMBuffer(capacity int) *MBuffer {
 	if err != nil {
 		panic(err)
 	}
-	return &MBuffer{mmap: mmap, buffer: mmap[0:0]}
+	return &MBuffer{buffer: mmap[0:0]}
 }
 
 type MultiBuffer struct {
