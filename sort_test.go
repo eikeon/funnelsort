@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/soniakeys/funnelsort"
+	"github.com/eikeon/funnelsort"
 )
 
 type intItem struct {

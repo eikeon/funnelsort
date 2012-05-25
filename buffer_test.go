@@ -3,7 +3,7 @@ package funnelsort_test
 import (
 	"testing"
 
-	"github.com/soniakeys/funnelsort"
+	"github.com/eikeon/funnelsort"
 )
 
 func TestBuffer(t *testing.T) {
