@@ -275,7 +275,7 @@ func (f *Funnel) fill(out Writer) {
 	if ok {
 		bout.Reset()
 	}
-	for bout != nil && bout.Full() == false {
+	for bout == nil || bout.Full() == false {
 		if f.left.exhausted == false && f.left.out.Empty() {
 			f.left.fill(f.left.out)
 		}
