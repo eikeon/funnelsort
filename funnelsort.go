@@ -35,15 +35,15 @@ type Writer interface {
 type Buffer interface {
 	Reader
 	Writer
-	peek() Item
-	empty() bool
-	full() bool
-	reset()
+	Peek() Item
+	Empty() bool
+	Full() bool
+	Reset()
 	Close()
 }
 
 type MBuffer struct {
-	max, unread uint64
+	unread uint64
 	buffer      []byte
 	off         int
 	mmap        []byte
@@ -53,15 +53,15 @@ func (b *MBuffer) Close() {
 	b.unmap()
 }
 
-func (b *MBuffer) empty() bool {
+func (b *MBuffer) Empty() bool {
 	return b.unread == 0
 }
 
-func (b *MBuffer) full() bool {
+func (b *MBuffer) Full() bool {
 	return len(b.buffer)+MaxItemLength >= cap(b.mmap)
 }
 
-func (b *MBuffer) reset() {
+func (b *MBuffer) Reset() {
 	b.unread = 0
 	b.buffer = b.buffer[0:0]
 	b.off = 0
@@ -79,7 +79,7 @@ func (b *MBuffer) Write(a Item) {
 	}
 }
 
-func (b *MBuffer) peek() Item {
+func (b *MBuffer) Peek() Item {
 	if b.unread == 0 {
 		return nil
 	}
@@ -120,20 +120,20 @@ type MultiBuffer struct {
 	read, write int
 }
 
-func (mb *MultiBuffer) empty() bool {
+func (mb *MultiBuffer) Empty() bool {
 	return mb.unread == 0
 }
 
-func (mb *MultiBuffer) full() bool {
+func (mb *MultiBuffer) Full() bool {
 	return mb.max != 0 && mb.unread == mb.max
 }
 
-func (mb *MultiBuffer) reset() {
+func (mb *MultiBuffer) Reset() {
 	mb.unread = 0
 	mb.read = 0
 	mb.write = 0
 	for _, b := range mb.buffers {
-		b.reset()
+		b.Reset()
 	}
 }
 
@@ -153,7 +153,7 @@ func (mb *MultiBuffer) Write(a Item) {
 	mb.unread += 1
 	w := mb.write
 	c := mb.getBuffer(w)
-	for ; c.full(); w++ {
+	for ; c.Full(); w++ {
 		c = mb.getBuffer(w)
 	}
 	mb.write = w
@@ -164,7 +164,7 @@ func (mb *MultiBuffer) getReadBuffer() Buffer {
 	r := mb.read
 	c := mb.getBuffer(r)
 	n := len(mb.buffers)
-	for ; c.empty(); r++ {
+	for ; c.Empty(); r++ {
 		if r < n {
 			c = mb.getBuffer(r)
 			mb.read = r
@@ -174,12 +174,12 @@ func (mb *MultiBuffer) getReadBuffer() Buffer {
 	}
 	return c
 }
-func (mb *MultiBuffer) peek() (item Item) {
+func (mb *MultiBuffer) Peek() (item Item) {
 	if mb.unread == 0 {
 		return nil
 	}
 	if c := mb.getReadBuffer(); c != nil {
-		item = c.peek()
+		item = c.Peek()
 	} else {
 		item = nil
 	}
@@ -273,17 +273,17 @@ func (f *Funnel) attachInput(in []Buffer, i int) {
 func (f *Funnel) fill(out Writer) {
 	bout, ok := out.(Buffer)
 	if ok {
-		bout.reset()
+		bout.Reset()
 	}
-	for bout != nil && bout.full() == false {
-		if f.left.exhausted == false && f.left.out.empty() {
+	for bout != nil && bout.Full() == false {
+		if f.left.exhausted == false && f.left.out.Empty() {
 			f.left.fill(f.left.out)
 		}
-		if f.right.exhausted == false && f.right.out.empty() {
+		if f.right.exhausted == false && f.right.out.Empty() {
 			f.right.fill(f.right.out)
 		}
-		if f.left.out.empty() {
-			if f.right.out.empty() {
+		if f.left.out.Empty() {
+			if f.right.out.Empty() {
 				f.left.out.Close()
 				f.right.out.Close()
 				f.exhausted = true
@@ -292,10 +292,10 @@ func (f *Funnel) fill(out Writer) {
 				out.Write(f.right.out.Read())
 			}
 		} else {
-			if f.right.out.empty() {
+			if f.right.out.Empty() {
 				out.Write(f.left.out.Read())
 			} else {
-				if f.left.out.peek().Less(f.right.out.peek()) {
+				if f.left.out.Peek().Less(f.right.out.Peek()) {
 					out.Write(f.left.out.Read())
 				} else {
 					out.Write(f.right.out.Read())
@@ -368,15 +368,15 @@ type itemBuffer struct {
 func (p *itemBuffer) Close() {
 }
 
-func (p *itemBuffer) empty() bool {
+func (p *itemBuffer) Empty() bool {
 	return len(p.buf) == 0
 }
 
-func (p *itemBuffer) full() bool {
+func (p *itemBuffer) Full() bool {
 	return false
 }
 
-func (p *itemBuffer) reset() {
+func (p *itemBuffer) Reset() {
 	p.buf = p.buf[0:0]
 }
 
@@ -384,7 +384,7 @@ func (p *itemBuffer) Write(a Item) {
 	p.buf = append(p.buf, a)
 }
 
-func (p *itemBuffer) peek() (item Item) {
+func (p *itemBuffer) Peek() (item Item) {
 	if len(p.buf) > 0 {
 		item = p.buf[0]
 	}
