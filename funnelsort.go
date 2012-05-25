@@ -28,7 +28,6 @@ type Writer interface {
 type Buffer interface {
 	Reader
 	Writer
-	Unread() uint64
 	peek() Item
 	empty() bool
 	full() bool
@@ -47,10 +46,6 @@ type MBuffer struct {
 
 func (b *MBuffer) Close() {
 	b.unmap()
-}
-
-func (b *MBuffer) Unread() uint64 {
-	return b.unread
 }
 
 func (b *MBuffer) empty() bool {
@@ -118,10 +113,6 @@ type MultiBuffer struct {
 	max, unread uint64
 	buffers     []Buffer
 	read, write int
-}
-
-func (mb *MultiBuffer) Unread() uint64 {
-	return mb.unread
 }
 
 func (mb *MultiBuffer) empty() bool {
@@ -372,10 +363,6 @@ type itemBuffer struct {
 func (p *itemBuffer) Close() {
 }
 
-func (p *itemBuffer) Unread() uint64 {
-	return uint64(len(p.buf))
-}
-
 func (p *itemBuffer) empty() bool {
 	return len(p.buf) == 0
 }
@@ -475,7 +462,7 @@ top:
 		merge(buffers, buffer)
 		buffers = buffers[0:0]
 		buffers = append(buffers, buffer)
-		kMax += (1 << (p / 2)) //kMax = int(math.Sqrt(float64(buffer.Unread())))
+		kMax += (1 << (p / 2))
 		goto top
 	}
 }
