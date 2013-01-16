@@ -407,7 +407,7 @@ func manual(in Reader) (items itemSlice, done bool) {
 
 var empty = &itemBuffer{make(itemSlice, 0)}
 
-func merge(buffers []Buffer, out Writer) {
+func Merge(buffers []Buffer, out Writer) {
 	f := NewFunnelK(len(buffers))
 
 	// pad the remaining inputs with an empty buffer
@@ -446,11 +446,11 @@ func FunnelSort(in Reader, out Writer) {
 			}
 		}
 		if done {
-			merge(buffers, out)
+			Merge(buffers, out)
 			break
 		} else {
 			buffer := NewBuffer()
-			merge(buffers, buffer)
+			Merge(buffers, buffer)
 			buffers = buffers[0:0]
 			buffers = append(buffers, buffer)
 			kMax += (1 << (p / 2))
