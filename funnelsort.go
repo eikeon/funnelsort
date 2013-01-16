@@ -156,7 +156,7 @@ func (mb *MultiBuffer) Write(a Item) {
 }
 
 func (mb *MultiBuffer) getReadBuffer() (buffer Buffer) {
-	for r, n := mb.read, len(mb.buffers); r<n; r++ {
+	for r, n := mb.read, len(mb.buffers); r < n; r++ {
 		c := mb.getBuffer(r)
 		if c.Empty() == false {
 			buffer = c
@@ -408,16 +408,18 @@ func manual(in Reader) (items itemSlice, done bool) {
 var empty = &itemBuffer{make(itemSlice, 0)}
 
 func Merge(buffers []Buffer, out Writer) {
-	f := NewFunnelK(len(buffers))
+	if len(buffers) > 0 {
+		f := NewFunnelK(len(buffers))
 
-	// pad the remaining inputs with an empty buffer
-	for k := int(f.K()); len(buffers) < k; {
-		buffers = append(buffers, empty)
-	}
-	f.Fill(buffers, out)
-	f.Close()
-	for _, b := range buffers {
-		b.Close()
+		// pad the remaining inputs with an empty buffer
+		for k := int(f.K()); len(buffers) < k; {
+			buffers = append(buffers, empty)
+		}
+		f.Fill(buffers, out)
+		f.Close()
+		for _, b := range buffers {
+			b.Close()
+		}
 	}
 	return
 }
