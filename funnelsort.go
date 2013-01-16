@@ -408,7 +408,17 @@ func manual(in Reader) (items itemSlice, done bool) {
 var empty = &itemBuffer{make(itemSlice, 0)}
 
 func Merge(buffers []Buffer, out Writer) {
-	if len(buffers) > 0 {
+	if len(buffers) == 1 {
+		in := buffers[0]
+		for {
+			item := in.Read();
+			if item == nil {
+				break
+			} else {
+				out.Write(item)
+			}
+		}
+	} else if len(buffers) > 0 {
 		f := NewFunnelK(len(buffers))
 
 		// pad the remaining inputs with an empty buffer
